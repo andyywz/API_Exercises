@@ -6,14 +6,14 @@ require 'nokogiri'
 
 class UserInput
 
-  def get_location
-    Puts "Type in your location"
+  def self.get_location
+    puts "Type in your location"
     gets.chomp
   end
 
-  def make_location
-    # raw_inp = get_location
-    raw_inp = "770 Broadway New York"
+  def self.make_location
+    raw_inp = get_location
+    # raw_inp = "770 Broadway New York"
     params = {"address" => raw_inp, "sensor" => false}
 
     endpoint = Addressable::URI.new(
@@ -34,22 +34,23 @@ class UserInput
 end
 
 class Location
-  attr_reader :lat, :lng
+  attr_reader :lat, :lng, :name
 
-  def initialize(lat,lng)
+  def initialize(lat,lng, name = "origin")
     @lat = lat
     @lng = lng
+    @name = name
   end
 end
 
 
 class Directions
 
-  def give_directions(loc1, loc2)
+  def self.give_directions(loc1, loc2)
     parse_directions( make_directions(loc1, loc2) )
   end
 
-  def make_directions(loc1, loc2)
+  def self.make_directions(loc1, loc2)
     origin = "#{loc1.lat},#{loc1.lng}"
     dest = "#{loc2.lat},#{loc2.lng}"
 
@@ -63,10 +64,19 @@ class Directions
       ).to_s
 
     json = JSON.parse(RestClient.get(endpoint))
-    html_dir = json["routes"].first["legs"].first["steps"].first["html_instructions"]
+    # p json["routes"].first["legs"].first["steps"]
+    steps = json["routes"].first["legs"].first["steps"]
+
+    # html_dir = json["routes"].first["legs"].first["steps"].first["html_instructions"]
+
+    steps.each do |step|
+      str = parse_directions(step["html_instructions"])
+      p str
+      break if str.include?("Destination will")
+    end
   end
 
-  def parse_directions(html_dir)
+  def self.parse_directions(html_dir)
     parsed_html = Nokogiri::HTML(html_dir)
     parsed_html.text
   end
@@ -75,5 +85,42 @@ end
 
 class PlaceFinder
 
+  def self.nearby_locations(loc1, radius)
+    loc_str = "#{loc1.lat},#{loc1.lng}"
+
+    params = {
+      "location" => loc_str,
+      "sensor" => false,
+      "rankby" => "distance",
+      "keyword" => "cream",
+      "keyword" => "ice",
+      "key" => "AIzaSyCW6W5LIs8zYdpcJaL5SnJ3QjYPu8TiD0Q"
+    }
+
+    endpoint = Addressable::URI.new(
+      :scheme => "https",
+      :host => "maps.googleapis.com",
+      :path => "maps/api/place/nearbysearch/json",
+      :query_values => params
+      ).to_s
+
+    json = JSON.parse(RestClient.get(endpoint))
+    shop_list = json["results"]
+
+    make_shop_locations(shop_list)
+  end
+
+  def self.make_shop_locations(geo_loc_array)
+    output = []
+
+    geo_loc_array.each do |location|
+      name = location["name"]
+      lat = location["geometry"]["location"]["lat"]
+      lng = location["geometry"]["location"]["lng"]
+
+      output << Location.new(lat, lng, name)
+    end
+    output
+  end
 end
 
