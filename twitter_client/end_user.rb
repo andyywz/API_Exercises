@@ -1,5 +1,6 @@
 require_relative 'user'
 
+
 class EndUser < User
   def self.set_user_name(user_name)
     @@current_user = EndUser.new(user_name)

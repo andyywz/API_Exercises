@@ -1,4 +1,5 @@
 require_relative 'twitter_session'
+require_relative 'status'
 
 class User
   attr_reader :user
